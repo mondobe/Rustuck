@@ -23,7 +23,6 @@ fn lex_and_parse<'a>(lexer: &'a Lexer, parser: &'a Parser, code: &'a str, verbos
 mod tests {
     use super::*;
     use super::Instruction::*;
-    use super::utah::parser::*;
 
     macro_rules! number_lexer {
         () => {
@@ -31,27 +30,12 @@ mod tests {
                 routine!(
                     :digits=
                         TagFrags!("digit", 
-                            "0"
-                            "1"
-                            "2"
-                            "3"
-                            "4"
-                            "5"
-                            "6"
-                            "7"
-                            "8"
-                            "9"
+                            "0" "1" "2" "3" "4"
+                            "5" "6" "7" "8" "9"
                         ) 
                         TagFrags!("nonzero",
-                            "1"
-                            "2"
-                            "3"
-                            "4"
-                            "5"
-                            "6"
-                            "7"
-                            "8"
-                            "9"
+                            "1" "2" "3" "4" "5"
+                            "6" "7" "8" "9"
                         )
                 )
                 routine!(
