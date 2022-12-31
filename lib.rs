@@ -9,6 +9,7 @@ pub use tlex::token::*;
 pub use utah::parse_token::*;
 pub use utah::parser::*;
 
+#[allow(dead_code)]
 fn lex_and_parse<'a>(lexer: &'a Lexer, parser: &'a Parser, code: &'a str, verbose: bool) -> Vec<ParseToken<'a>> {
     let code = &mut to_tokens(code, "input");
     let lex = lexer;

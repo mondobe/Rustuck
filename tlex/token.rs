@@ -37,7 +37,7 @@ pub fn to_tokens<'a>(text: &'a str, file_name : &'a str) -> Vec<Token<'a>>
             file: file_name
         });
 
-        if let Some(ch) = c.chars().nth(0) {
+        if let Some(ch) = c.chars().next() {
             let len = tokens.len();
 
             if ch.is_whitespace() {

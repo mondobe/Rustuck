@@ -121,7 +121,7 @@ impl Ltm {
                 self.rule_index += 1;
 
                 if verbose {
-                    println!("Wrapping all the previous tokens into {}.", new_content.clone());
+                    println!("Wrapping all the previous tokens into {}.", new_content);
                 }
             }
             Instruction::If(cond) => {
