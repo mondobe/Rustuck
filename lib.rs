@@ -1,3 +1,4 @@
+#![allow(unused_macros)]
 pub mod tlex;
 pub mod utah;
 
@@ -50,6 +51,88 @@ macro_rules! lexer {
                     $rule,
                 )*
             ]
+        }
+    };
+}
+
+macro_rules! parser {
+    ($($rule:expr)*) => {
+        Parser {
+            rules: &vec![
+                $(
+                    $rule,
+                )*
+            ]
+        }
+    };
+}
+
+macro_rules! rule {
+    ($($matches:expr)+ ; $($tags:expr)+) => {
+        Rule {
+            matches: vec![
+                $(
+                    $matches,
+                )+
+            ],
+            tags: vec![
+                $(
+                    $tags,
+                )+
+            ],
+            repeat: None,
+            add_all: false
+        }
+    };
+
+    ($($matches:expr)+ ;; $($tags:expr)+) => {
+        Rule {
+            matches: vec![
+                $(
+                    $matches,
+                )+
+            ],
+            tags: vec![
+                $(
+                    $tags,
+                )+
+            ],
+            repeat: None,
+            add_all: true
+        }
+    };
+
+    ($($matches:expr)+; $repeat:expr; $($tags:expr)+) => {
+        Rule {
+            matches: vec![
+                $(
+                    $matches,
+                )+
+            ],
+            tags: vec![
+                $(
+                    $tags,
+                )+
+            ],
+            repeat: Some($repeat),
+            add_all: false
+        }
+    };
+
+    ($($matches:expr)+; $repeat:expr;; $($tags:expr)+) => {
+        Rule {
+            matches: vec![
+                $(
+                    $matches,
+                )+
+            ],
+            tags: vec![
+                $(
+                    $tags,
+                )+
+            ],
+            repeat: Some($repeat),
+            add_all: true
         }
     };
 }
@@ -138,16 +221,9 @@ macro_rules! number_lexer {
 
 macro_rules! pair_parser {
     () => {
-    Parser {
-        rules: &vec![
-            Rule {
-                matches: vec!["int", "int"],
-                tags: vec!["pair"],
-                repeat: None,
-                add_all: false
-            }
-        ]
-    }
+        parser!(
+                rule!("int" "int" ; "pair")
+        )
     };
 }
 
