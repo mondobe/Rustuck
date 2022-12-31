@@ -53,15 +53,7 @@ impl Rule<'_> {
             let mut r_index = 0;
             let mut p_index = 0;
 
-            if verbose {
-                println!("start_index ({start_index}) keeps being less than code.len()");
-            }
-
             while r_index < self.matches.len() {
-
-                if verbose {
-                    println!("r_index ({r_index}) keeps being less than self.matches.len()");
-                }
 
                 if p_index + start_index >= code.len() {
                     if r_index != self.matches.len() - 1 || Some(r_index) != self.repeat {

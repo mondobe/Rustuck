@@ -1,230 +1,22 @@
 #![allow(unused_macros)]
 pub mod tlex;
 pub mod utah;
+#[macro_use]
+pub mod macros;
 
 pub use tlex::lexer::*;
 pub use tlex::token::*;
 pub use utah::parse_token::*;
+pub use utah::parser::*;
 
-macro_rules! TagFrags {
-    ($tag:expr, $($frag:expr)*) => {
-        Block(vec![
-            $(
-                If($frag), Add($tag),
-            )*
-        ])
-    };
-}
-
-macro_rules! Do {
-    ($($instr:expr)*) => {
-        Block(vec![
-            $(
-                $instr,
-            )*
-        ])
-    };
-}
-
-macro_rules! routine {
-    (:$name:ident= $($instr:expr)*) => {
-        {
-            let rule_instrs : Vec<Instruction> = vec![
-                $(
-                    $instr,
-                )*
-            ];
-
-            Routine {
-                name: stringify!($name),
-                instrs: rule_instrs
-            }
-        }
-    };
-}
-
-macro_rules! lexer {
-    ($($rule:expr)*) => {
-        Lexer {
-            rules: &vec![
-                $(
-                    $rule,
-                )*
-            ]
-        }
-    };
-}
-
-macro_rules! parser {
-    ($($rule:expr)*) => {
-        Parser {
-            rules: &vec![
-                $(
-                    $rule,
-                )*
-            ]
-        }
-    };
-}
-
-macro_rules! rule {
-    ($($matches:expr)+ ; $($tags:expr)+) => {
-        Rule {
-            matches: vec![
-                $(
-                    $matches,
-                )+
-            ],
-            tags: vec![
-                $(
-                    $tags,
-                )+
-            ],
-            repeat: None,
-            add_all: false
-        }
-    };
-
-    ($($matches:expr)+ ;; $($tags:expr)+) => {
-        Rule {
-            matches: vec![
-                $(
-                    $matches,
-                )+
-            ],
-            tags: vec![
-                $(
-                    $tags,
-                )+
-            ],
-            repeat: None,
-            add_all: true
-        }
-    };
-
-    ($($matches:expr)+; $repeat:expr; $($tags:expr)+) => {
-        Rule {
-            matches: vec![
-                $(
-                    $matches,
-                )+
-            ],
-            tags: vec![
-                $(
-                    $tags,
-                )+
-            ],
-            repeat: Some($repeat),
-            add_all: false
-        }
-    };
-
-    ($($matches:expr)+; $repeat:expr;; $($tags:expr)+) => {
-        Rule {
-            matches: vec![
-                $(
-                    $matches,
-                )+
-            ],
-            tags: vec![
-                $(
-                    $tags,
-                )+
-            ],
-            repeat: Some($repeat),
-            add_all: true
-        }
-    };
-}
-
-macro_rules! number_lexer {
-    () => {
-        lexer!(
-            routine!(
-                :digits=
-                    TagFrags!("digit", 
-                        "0"
-                        "1"
-                        "2"
-                        "3"
-                        "4"
-                        "5"
-                        "6"
-                        "7"
-                        "8"
-                        "9"
-                    ) 
-                    TagFrags!("nonzero",
-                        "1"
-                        "2"
-                        "3"
-                        "4"
-                        "5"
-                        "6"
-                        "7"
-                        "8"
-                        "9"
-                    )
-            )
-            routine!(
-                :ints=
-                    If("nonzero")
-                        Skip
-                    Else
-                        Cancel
-                    Label("Test")
-                    Next
-                    If("digit")
-                        Goto("Test")
-                    Do!(
-                        Wrap
-                        Back
-                        Add("int")
-                        Add("posInt")
-                    )
-            )
-            routine!(
-                :zeroInts=
-                    If("0") Do!(
-                        Add("int")
-                        Add("posInt")
-                    )
-            )
-            routine!(
-                :negatives=
-                    If("-") Next Else Cancel
-                    If("posInt") Do!(
-                        Next
-                        Wrap
-                        Back
-                        Add("int")
-                        Add("negInt")
-                    )
-            )
-            routine!(
-                :decimal=
-                    If("int") Next Else Cancel
-                    If(".") Next Else Cancel
-                    If("posInt") Next Else Cancel
-                    Wrap
-                    Back
-                    Add("decimal")
-            )
-            routine!(
-                :noWs=
-                    If("ws")
-                        Delete
-            )
-        )
-    };
-}
-
-macro_rules! pair_parser {
-    () => {
-        parser!(
-                rule!("int" "int" ; "pair")
-        )
-    };
+fn lex_and_parse<'a>(lexer: &'a Lexer, parser: &'a Parser, code: &'a str, verbose: bool) -> Vec<ParseToken<'a>> {
+    let code = &mut to_tokens(code, "input");
+    let lex = lexer;
+    lex.lex(code, verbose);
+    let parse = parser;
+    let mut code = to_parse_tokens(code.to_vec());
+    parse.parse(&mut code, verbose);
+    code
 }
 
 #[cfg(test)]
@@ -232,6 +24,96 @@ mod tests {
     use super::*;
     use super::Instruction::*;
     use super::utah::parser::*;
+
+    macro_rules! number_lexer {
+        () => {
+            lexer!(
+                routine!(
+                    :digits=
+                        TagFrags!("digit", 
+                            "0"
+                            "1"
+                            "2"
+                            "3"
+                            "4"
+                            "5"
+                            "6"
+                            "7"
+                            "8"
+                            "9"
+                        ) 
+                        TagFrags!("nonzero",
+                            "1"
+                            "2"
+                            "3"
+                            "4"
+                            "5"
+                            "6"
+                            "7"
+                            "8"
+                            "9"
+                        )
+                )
+                routine!(
+                    :ints=
+                        If("nonzero")
+                            Skip
+                        Else
+                            Cancel
+                        Label("Test")
+                        Next
+                        If("digit")
+                            Goto("Test")
+                        Do!(
+                            Wrap
+                            Back
+                            Add("int")
+                            Add("posInt")
+                        )
+                )
+                routine!(
+                    :zeroInts=
+                        If("0") Do!(
+                            Add("int")
+                            Add("posInt")
+                        )
+                )
+                routine!(
+                    :negatives=
+                        If("-") Next Else Cancel
+                        If("posInt") Do!(
+                            Next
+                            Wrap
+                            Back
+                            Add("int")
+                            Add("negInt")
+                        )
+                )
+                routine!(
+                    :decimal=
+                        If("int") Next Else Cancel
+                        If(".") Next Else Cancel
+                        If("posInt") Next Else Cancel
+                        Wrap
+                        Back
+                        Add("decimal")
+                )
+                routine!(
+                    :noWs=
+                        If("ws")
+                            Delete
+                )
+            )
+        };
+    }
+
+    macro_rules! pair_parser {
+        () => {
+            parser!(
+                    rule!("int" "int" ; "pair")
+            )
+        };
+    }
 
     const INPUT_TEXT: &str = "
     0 1 2 3 4 5 6 -7 8 9 10 11 12
@@ -243,13 +125,7 @@ mod tests {
 
     #[test]
     fn simple_lexer() {
-        let code = &mut to_tokens(INPUT_TEXT, "input");
-        let lex = number_lexer!();
-        lex.lex(code, true);
-        let parse = pair_parser!();
-        let mut code = to_parse_tokens(code.to_vec());
-        parse.parse(&mut code, true);
-        print_parse_tokens(code);
+        print_parse_tokens(lex_and_parse(&number_lexer!(), &pair_parser!(), INPUT_TEXT, false));
     }
 
     #[test]
