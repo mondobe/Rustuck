@@ -126,15 +126,15 @@ impl Rule<'_> {
     pub fn traverse_and_add_all<'a>(&'a self, code: &mut Vec<ParseToken<'a>>, changed: &mut bool, verbose: bool) {
         let mut start_index: usize = 0;
 
-        while start_index < code.len() {
-            let mut buffer: Vec<ParseToken> = vec![];
+        'outer: while start_index < code.len() {
+            let mut buffer: Vec<usize> = vec![];
             let mut works = true;
             let mut r_index = 0;
             let mut p_index = 0;
 
             while r_index < self.matches.len() {
                 if p_index + start_index >= code.len() {
-                    if r_index != self.matches.len() - 1 || Some(r_index) == self.repeat {
+                    if r_index != self.matches.len() - 1 || Some(r_index) != self.repeat {
                         works = false;
                     }
                     break;
@@ -149,11 +149,10 @@ impl Rule<'_> {
                         if r_index >= self.matches.len() {
                             break;
                         }
-                        p_index -= 1;
                         continue;
                     }
                 }
-                buffer.push(code[p_index + start_index].clone());
+                buffer.push(p_index + start_index);
                 if Some(r_index) != self.repeat {
                     r_index += 1;
                 }
@@ -162,19 +161,24 @@ impl Rule<'_> {
             }
 
             if !works {
-                continue;
+                start_index = start_index.wrapping_add(1);
+                continue 'outer;
             }
             
-            for mut pt in buffer {
+            for pt in buffer {
                 for t in &self.tags {
-                    if !pt.tags.contains(t) {
-                        pt.tags.push(t);
-                        *changed = true;
-                    }
-                }
+                    if !code[pt].tags.contains(t) {
+                        if verbose {
+                            println!("Adding {0:?} to {1}", self.tags, pt);
+                        }
 
-                if verbose {
-                    println!("Adding {0:?} to {1}", self.tags, pt);
+                        code[pt].tags.push(t);
+                        *changed = true;
+
+                        if verbose {
+                            println!("After adding: {}", pt);
+                        }
+                    }
                 }
             }
 
