@@ -95,7 +95,7 @@ mod tests {
     macro_rules! pair_parser {
         () => {
             parser!(
-                    rule!("int" "int" ;; "pair")
+                    rule!("int" "int" ; "pair")
             )
         };
     }
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn simple_lexer() {
-        print_parse_tokens(lex_and_parse(&number_lexer!(), &pair_parser!(), INPUT_TEXT, true));
+        print_parse_tokens(lex_and_parse(&number_lexer!(), &pair_parser!(), INPUT_TEXT, false));
     }
 
     #[test]

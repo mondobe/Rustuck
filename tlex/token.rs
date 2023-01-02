@@ -1,17 +1,25 @@
 use std::fmt::Display;
+use std::ops::Range;
 
 #[derive(Debug, Clone)]
 pub struct Token<'a> {
-    pub content: String,
+    pub location: Range<usize>,
+    pub body: &'a str,
     pub tags: Vec<&'a str>,
     pub line: usize,
     pub char: usize,
     pub file: &'a str
 }
 
+impl Token<'_> {
+    pub fn content(&self) -> &str {
+        &self.body[self.location.start..self.location.end]
+    }
+}
+
 impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\"{0}\" (line {2}, char {3} in {4}): {1:?}", self.content, self.tags, self.line, self.char, self.file)
+        write!(f, "\"{0:?}\" (line {2}, char {3} in {4}): {1:?}", self.content(), self.tags, self.line, self.char, self.file)
     }
 }
 
@@ -30,8 +38,9 @@ pub fn to_tokens<'a>(text: &'a str, file_name : &'a str) -> Vec<Token<'a>>
     for i in 0..text.len() {
         let c = &text[i..=i];
         tokens.push(Token {
-            content: c.to_owned(),
-            tags : vec![c],
+            location: i..i + 1,
+            body: text,
+            tags: vec![c],
             line: line_index,
             char: char_index,
             file: file_name
@@ -53,7 +62,8 @@ pub fn to_tokens<'a>(text: &'a str, file_name : &'a str) -> Vec<Token<'a>>
     }
 
     tokens.push(Token {
-        content: String::from(""),
+        location: 0..0,
+        body: text,
         tags: vec![" ", "ws"],
         line: line_index,
         char: char_index,

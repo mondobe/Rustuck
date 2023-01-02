@@ -24,12 +24,7 @@ impl Parser<'_> {
         let mut changed = false;
 
         for rule in self.rules {
-            if rule.add_all {
-                rule.traverse_and_add_all(code, &mut changed, verbose)
-            }
-            else {
-                rule.traverse_and_combine(code, &mut changed, verbose);
-            }
+            rule.traverse(code, &mut changed, verbose);
         }
 
         if changed { 
@@ -42,32 +37,29 @@ impl Parser<'_> {
 }
 
 impl Rule<'_> {
-    pub fn traverse_and_combine<'a>(&'a self, code: &mut Vec<ParseToken<'a>>, changed: &mut bool, verbose: bool) {
+    pub fn traverse<'a>(&'a self, code: &mut Vec<ParseToken<'a>>, changed: &mut bool, verbose: bool) {
         let mut start_index: usize = 0;
 
-        *changed = false;
-
         'outer: while start_index < code.len() {
-            let mut buffer: Vec<ParseToken> = vec![];
             let mut works = true;
-            let mut r_index = 0;
-            let mut p_index = 0;
+            let mut index_in_rule = 0;
+            let mut parse_token_index = 0;
 
-            while r_index < self.matches.len() {
+            while index_in_rule < self.matches.len() {
 
-                if p_index + start_index >= code.len() {
-                    if r_index != self.matches.len() - 1 || Some(r_index) != self.repeat {
+                if parse_token_index + start_index >= code.len() {
+                    if index_in_rule != self.matches.len() - 1 || Some(index_in_rule) != self.repeat {
                         works = false;
                     }
                     break;
                 }
-                if !code[p_index + start_index].tags.contains(&self.matches[r_index]) {
-                    if Some(r_index) == self.repeat {
+                if !code[parse_token_index + start_index].tags.contains(&self.matches[index_in_rule]) {
+                    if Some(index_in_rule) == self.repeat {
                         if verbose {
                             println!("Matched the * index.");
                         }
-                        r_index += 1;
-                        if r_index >= self.matches.len() {
+                        index_in_rule += 1;
+                        if index_in_rule >= self.matches.len() {
                             break;
                         }
                         continue;
@@ -77,112 +69,60 @@ impl Rule<'_> {
                         break;
                     }
                 }
-                buffer.push(code[p_index + start_index].clone());
-                if Some(r_index) != self.repeat {
-                    r_index += 1;
+                if Some(index_in_rule) != self.repeat {
+                    index_in_rule += 1;
                 }
 
-                p_index += 1;
+                parse_token_index += 1;
             }
 
             if !works {
-                start_index = start_index.wrapping_add(1);
+                start_index += 1;
                 continue 'outer;
             }
             
-
-            for i in start_index..(start_index + buffer.len()) {
-                code.remove(i);
+            if self.add_all {
+                self.add_all(code, start_index, start_index + parse_token_index, changed);
             }
-            if let Some(new_content) = buffer.iter().map(|pt| pt.content.clone()).reduce(|acc, i| acc + &i) {
-                let line = buffer[0].line;
-                let char = buffer[0].char;
-                let file = buffer[0].file;
-                let pt = ParseToken {
-                    content: new_content,
-                    children: buffer,
-                    tags: self.tags.clone(),
-                    line,
-                    char,
-                    file
-                };
-
-                if verbose {
-                    print!("Creating new ParseToken: {}", &pt);
-                }
-
-                code.insert(start_index, pt);
-
-                *changed = true;
-
-                start_index = start_index.wrapping_sub(1);
-            }
-
-
-            start_index = start_index.wrapping_add(1);
-        }
-    }
-
-    pub fn traverse_and_add_all<'a>(&'a self, code: &mut Vec<ParseToken<'a>>, changed: &mut bool, verbose: bool) {
-        let mut start_index: usize = 0;
-
-        'outer: while start_index < code.len() {
-            let mut buffer: Vec<usize> = vec![];
-            let mut works = true;
-            let mut r_index = 0;
-            let mut p_index = 0;
-
-            while r_index < self.matches.len() {
-                if p_index + start_index >= code.len() {
-                    if r_index != self.matches.len() - 1 || Some(r_index) != self.repeat {
-                        works = false;
-                    }
-                    break;
-                }
-                if !code[p_index + start_index].tags.contains(&self.matches[r_index]) {
-                    if Some(r_index) != self.repeat {
-                        works = false;
-                        break;
-                    }
-                    else {
-                        r_index += 1;
-                        if r_index >= self.matches.len() {
-                            break;
-                        }
-                        continue;
-                    }
-                }
-                buffer.push(p_index + start_index);
-                if Some(r_index) != self.repeat {
-                    r_index += 1;
-                }
-
-                p_index += 1;
-            }
-
-            if !works {
-                start_index = start_index.wrapping_add(1);
-                continue 'outer;
-            }
-            
-            for pt in buffer {
-                for t in &self.tags {
-                    if !code[pt].tags.contains(t) {
-                        if verbose {
-                            println!("Adding {0:?} to {1}", self.tags, pt);
-                        }
-
-                        code[pt].tags.push(t);
-                        *changed = true;
-
-                        if verbose {
-                            println!("After adding: {}", pt);
-                        }
-                    }
-                }
+            else {
+                self.combine(code, start_index, start_index + parse_token_index, changed);
             }
 
             start_index += 1;
         }
+    }
+
+    pub fn combine<'a>(&'a self, code: &mut Vec<ParseToken<'a>>, start_index: usize, end_index: usize, changed: &mut bool) {
+                code[start_index] = ParseToken {
+                    location: code[start_index].location.start..code[end_index - 1].location.end,
+                    body: code[0].body,
+                    children: code[start_index..end_index].to_vec(),
+                    tags: self.tags.clone(),
+                    ..code[start_index]
+                };
+                for i in (start_index + 1)..end_index {
+                    if i >= code.len() {
+                        continue;
+                    }
+
+                    code.remove(i);
+                    *changed = true;
+                }
+    }
+
+    pub fn add_all<'a>(&'a self, code: &mut Vec<ParseToken<'a>>, start_index: usize, end_index: usize, changed: &mut bool) {
+            for pt in start_index..end_index {
+                if pt >= code.len() {
+                    continue;
+                }
+
+                for t in &self.tags {
+                    if !code[pt].tags.contains(t) {
+                        code[pt].tags.push(t);
+                        *changed = true;
+                        println!("{}", code[pt]);
+                    }
+                }
+            }
     }
 }

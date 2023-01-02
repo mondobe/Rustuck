@@ -106,14 +106,14 @@ impl Ltm {
                 self.rule_index += 1;
             }
             Instruction::Wrap => {
-                let mut new_content = code[self.start_index].content.to_owned();
+                let loc_range = code[self.start_index].location.start..code[self.index - 1].location.end;
                 for _ in (self.start_index + 1)..self.index {
-                    new_content = new_content.to_owned() + &code[self.start_index + 1].content;
                     code.remove(self.start_index + 1);
                 }
 
                 code[self.start_index] = Token {
-                    content: new_content.clone(),
+                    location: loc_range,
+                    body: code[0].body,
                     tags: vec![],
                     ..code[self.start_index]
                 };
@@ -121,7 +121,7 @@ impl Ltm {
                 self.rule_index += 1;
 
                 if verbose {
-                    println!("Wrapping all the previous tokens into {}.", new_content);
+                    println!("Wrapping all the previous tokens into {}.", code[self.start_index].content());
                 }
             }
             Instruction::If(cond) => {
