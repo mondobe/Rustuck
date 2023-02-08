@@ -1,3 +1,10 @@
+/*!
+ * Rustuck is an enhanced Rust implementation of TUCK: the T-Lex/Utahparser 
+ * construction kit. It has a collection of macros to support easy lexer and
+ * parser generation along with a set of functions to execute your imperative
+ * lexer and declarative parser code on sets of text or tokens respectively.
+ */
+
 #![allow(unused_macros)]
 pub mod tlex;
 pub mod utah;
@@ -9,8 +16,24 @@ pub use tlex::token::*;
 pub use utah::parse_token::*;
 pub use utah::parser::*;
 
-#[allow(dead_code)]
-fn lex_and_parse<'a>(lexer: &'a Lexer, parser: &'a Parser, code: &'a str, verbose: bool) -> Vec<ParseToken<'a>> {
+/// Returns a vector of ParseTokens representing a fully lexed and parsed 
+/// string
+/// 
+/// # Arguments
+/// 
+/// - lexer - A reference to a lexer that represents the series of routines 
+/// that will be executed on the string
+/// - parser - A reference to a parser that represents the series of rules that
+/// will be executed on the vector of tokens returned from the lexing
+/// - code - The string that is input into the lexer
+/// - verbose - Whether to print debug information
+
+pub fn lex_and_parse<'a>(
+    lexer: &'a Lexer, 
+    parser: &'a Parser, 
+    code: &'a str, 
+    verbose: bool
+) -> Vec<ParseToken<'a>> {
     let code = &mut to_tokens(code, "input");
     let lex = lexer;
     lex.lex(code, verbose);
@@ -110,7 +133,8 @@ mod tests {
 
     #[test]
     fn simple_lexer() {
-        print_parse_tokens(lex_and_parse(&number_lexer!(), &pair_parser!(), INPUT_TEXT, false));
+        print_parse_tokens(lex_and_parse(&number_lexer!(), &pair_parser!(), 
+                INPUT_TEXT, false));
     }
 
     #[test]
